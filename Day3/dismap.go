@@ -45,7 +45,7 @@ func (dis *DisMap) SaveAsPng(){
     for i := 0 ; i < dis.height ; i++{
         for j:= 0; j < dis.width ; j++{
             b1,b2 := dis.At(i,j)
-            if *b1 > 0 && *b2 > 0{
+            if *b1 > 0 || *b2 > 0{
                 pngimage.Set(i,j,color.RGBA{255,255,255,255})
             }else{
                 pngimage.Set(i,j,color.RGBA{0,0,0,255})
@@ -65,42 +65,41 @@ func (dis *DisMap) Recal(src image.Image,bounds image.Rectangle,bg color.Color){
         return
     }
 
-    for i := bounds.Max.X -1 ; i >= bounds.Min.X ; i--{
-        for j := bounds.Max.Y - 1 ; j >= 0 ; j--{
-            _,b1 := dis.At(i,j)
+    for j := bounds.Max.Y -1 ; j >= bounds.Min.Y ; j--{
+        for i := bounds.Max.X -1 ; i >= 0 ; i--{
+            cur_x,cur_y := dis.At(i,j)
             c := src.At(i,j)
 
             cr,cg,cb,ca := c.RGBA()
             br,bg,bb,ba := bg.RGBA()
-            if cr == br && cg == bg && cb == bb && ca == ba {
-                prej := j + 1
-                if prej < dis.Bounds().Max.Y{
-                    _,b2 := dis.At(i,prej)
-                    *b1 = *b2 + 1
-                }
-            }else{
-                *b1 = 0
-            }
-        }
-    }
-    for i := bounds.Max.X -1 ; i >= 0 ; i--{
-        for j := bounds.Max.Y - 1 ; j >= bounds.Min.Y ; j--{
-            b1,_ := dis.At(i,j)
-            c := src.At(i,j)
-
-            cr,cg,cb,ca := c.RGBA()
-            br,bg,bb,ba := bg.RGBA()
-
             if cr == br && cg == bg && cb == bb && ca == ba {
                 prei := i + 1
-                if prei < dis.Bounds().Max.X{
-                    b2,_ := dis.At(prei,j)
-                    *b1 = *b2 + 1
-                }
+
+                if prei < bounds.Max.X{
+                    next_x,_ := dis.At(prei,j)
+                    if *next_x + 1 < *cur_x{
+                        *cur_x = *next_x + 1
+                    }
+               }
             }else{
-                *b1 = 0
+                *cur_x = 0
+                *cur_y = 0
             }
         }
     }
     dis.SaveAsPng()
+}
+
+func (dis *DisMap)IsOk(x int,y int,dx int,dy int) (bool){
+    k := dx
+    if y+dy >= dis.height{
+        return false;
+    }
+    for r := y ; r < y+dy ; r++{
+        cx,_ := dis.At(x,r)
+        if *cx < k{
+            k = *cx
+        }
+    }
+    return k == dx
 }

@@ -12,6 +12,7 @@ import (
     "image/draw"
     "image/color"
     "math/rand"
+    "sort"
 )
 
 func GetContext(s string) *freetype.Context {
@@ -62,27 +63,58 @@ func GetRandomTable(size int)[]int{
     return randomtable
 }
 
+type CenterTable struct{
+    h,w int
+    centertable []int 
+}
+
+func (t CenterTable)Len()int{
+    return len(t.centertable)
+}
+
+func (t CenterTable)Less(i int,j int)bool{
+    v1 := t.centertable[i]
+    v2 := t.centertable[j]
+    dx1 := v1 / t.w
+    dy1 := v1 % t.w
+    dx2 := v2 / t.w
+    dy2 := v2 % t.w
+    return (dx1 - t.h/2)*(dx1 - t.h/2)+(dy1 -t.w/2)*(dy1-t.w/2) < (dx2 - t.h/2)*(dx2 - t.h/2)+(dy2 - t.w/2)*(dy2-t.w/2)
+}
+
+func (t CenterTable)Swap(i,j int){
+    t.centertable[i],t.centertable[j] = t.centertable[j],t.centertable[i]
+}
+
+func GetCenterTable(h int,w int)[]int{
+    centertable := make([]int,h*w)
+    for i := 0 ; i < len(centertable) ; i++{
+        centertable[i] = i
+    }
+    sort.Sort(CenterTable{h,w,centertable})
+    return centertable
+}
+
 func main(){
-    dis := NewDisMap(255,255)
-    randomtable := GetRandomTable(255*255)
+    dis := NewDisMap(1000,1000)
+    randomtable := GetRandomTable(1000*1000)
     dis.SaveAsPng()
-    background := image.NewRGBA(image.Rect(0,0,255,255))
+    background := image.NewRGBA(image.Rect(0,0,1000,1000))
     draw.Draw(background,background.Bounds(),image.White,image.ZP,draw.Src)
     context := GetContext("font.ttf")
     context.SetClip(background.Bounds())
     context.SetDst(background)
     context.SetSrc(image.Black)
 
-    for fontsize := float64(52);fontsize > 10; fontsize = fontsize -1{
-        for idx := 0 ; idx < 255*255 ; idx++{
-            px,py := randomtable[idx] % 255, randomtable[idx] / 255
+    for fontsize := float64(52);fontsize > 26; fontsize = fontsize -1{
+        time := 100 / fontsize
+        for idx := 0 ; idx < 1000*1000 && time > 0; idx++{
+            px,py := randomtable[idx] % 1000, randomtable[idx] / 1000
             dx,dy := DrawBounds(context,"你好",px,py,fontsize)
-            disx,disy :=dis.At(px,py)
-            if *disx >= dx && *disy >= dy {
-                fmt.Println(px,py,dx,dy,*disx,*disy)
+            if dis.IsOk(px,py,dx,dy) {
                 DrawString(context,"你好",px,py,fontsize)
                 dis.Recal(background,image.Rect(px,py,px+dx,py+dy),color.RGBA{255,255,255,255})
-                break;
+                time--
             }
        }
     }
